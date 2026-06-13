@@ -126,7 +126,8 @@ python3 test/system_test.py
 See test/README.md for detailed instructions on seeding an admin user and obtaining tokens.
 
 # Project Structure (high‑level)
-text
+
+
 kloka/
 ├── cmd/server/       
 ├── internal/
