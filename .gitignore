@@ -1,0 +1,83 @@
+# Binaries
+kloka
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Debug binaries (Delve)
+__debug_bin
+
+# Build Artifacts
+bin/
+dist/
+build/
+coverage/
+coverage.out
+
+# Go Workspace
+go.work
+go.work.sum
+
+# Dependencies
+vendor/
+
+# Environment Files
+.env
+.env.*
+!.env.example
+
+# Direnv
+.envrc
+
+# Process ID files
+*.pid
+
+# IDEs
+.idea/
+.vscode/
+
+# JetBrains
+*.iml
+
+# Vim
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Test Artifacts
+*.prof
+*.pprof
+
+# Temporary Files
+tmp/
+temp/
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+
+# Local Development
+local/
+scratch/
+
+# Generated OpenAPI Files
+openapi.json
+
+# Terraform (future infrastructure)
+.terraform/
+*.tfstate
+*.tfstate.*
