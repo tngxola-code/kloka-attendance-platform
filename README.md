@@ -128,7 +128,7 @@ See test/README.md for detailed instructions on seeding an admin user and obtain
 # Project Structure (high‑level)
 text
 kloka/
-├── cmd/server/          entrypoint (config → db → migrate → wire → serve)
+├── cmd/server/       
 ├── internal/
 │   ├── domain/          tenants, workers, clocking, attendance, disputes, leave, risk, payroll, …
 │   ├── middleware/      request‑id, logging, CORS, JWT auth + tenant scope
