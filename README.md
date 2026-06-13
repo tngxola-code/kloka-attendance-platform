@@ -127,21 +127,37 @@ See test/README.md for detailed instructions on seeding an admin user and obtain
 
 # Project Structure (high‑level)
 
+## Planned Project Structure
 
+```text
 kloka/
-├── cmd/server/       
+├── cmd/
+│   └── server/
+│
 ├── internal/
-│   ├── domain/          tenants, workers, clocking, attendance, disputes, leave, risk, payroll, …
-│   ├── middleware/      request‑id, logging, CORS, JWT auth + tenant scope
-│   ├── httpx/           RFC 7807 problems, strict JSON decode
-│   ├── auth/            JWT issue/verify, bcrypt hashing
-│   ├── db/              pgx pool, embedded migrations
-│   ├── metrics/         Prometheus recording middleware + /metrics handler
-│   ├── jobs/            River‑shaped async job queue (SKIP LOCKED, retries)
-│   └── server/          chi router wiring all domains + embedded openapi.yaml
-├── test/                integration suites (e2e, attendance, disputes, leave, risk, payroll, system)
-├── migrations/          embedded SQL migrations (0001_*.sql … 0008_*.sql)
+│   ├── auth/
+│   ├── config/
+│   ├── db/
+│   ├── httpx/
+│   ├── middleware/
+│   ├── metrics/
+│   ├── jobs/
+│   ├── server/
+│   └── domain/
+│       ├── tenants/
+│       ├── workers/
+│       ├── sites/
+│       ├── clocking/
+│       ├── attendance/
+│       ├── disputes/
+│       ├── leave/
+│       ├── risk/
+│       └── payroll/
+│
+├── test/
+├── docs/
 └── go.mod
+```
 
 # Note on Dependencies / Module Proxy
 The `go.mod` contains `replace` directives that map `golang.org/x/*` and `gopkg.in/*` to their GitHub mirrors. These were added because the build environment could only reach `github.com (not proxy.golang.org).` In a normal environment with `GOPROXY=https://proxy.golang.org`, you can remove the entire `replace` block and run `go mod tidy.`
