@@ -17,7 +17,7 @@ import (
 
 	"kloka-attendance-platform/internal/auth"
 	"kloka-attendance-platform/internal/domain/tenants"
-	// "kloka-attendance-platform/internal/domain/workers"
+	"kloka-attendance-platform/internal/domain/workers"
 	"kloka-attendance-platform/internal/metrics"
 	"kloka-attendance-platform/internal/system"
 )
@@ -41,9 +41,9 @@ func main() {
 	tenantHandler := tenants.NewHandler(tenantSvc, refreshStore)
 
 	// Worker parts commented out for now
-	// workerRepo := workers.NewMemoryRepository()
-	// workerSvc := workers.NewService(workerRepo)
-	// workerHandler := workers.NewHandler(workerSvc)
+	workerRepo := workers.NewMemoryRepository()
+	workerSvc := workers.NewService(workerRepo)
+	workerHandler := workers.NewHandler(workerSvc)
 
 	// Secret lookup for JWT middleware
 	secretLookup := func(ctx context.Context, tenantID string) ([]byte, error) {
@@ -90,15 +90,15 @@ func main() {
 		})
 
 		// Worker endpoints commented out for now
-		// r.Group(func(r chi.Router) {
-		//     r.Use(auth.Authenticate(secretLookup))
-		//     r.Use(auth.RequireScope("workers:read"))
-		//     r.Get("/workers", workerHandler.ListWorkers)
-		//     r.Post("/workers", workerHandler.CreateWorker)
-		//     r.Get("/workers/{id}", workerHandler.GetWorker)
-		//     r.Patch("/workers/{id}", workerHandler.UpdateWorker)
-		//     r.Delete("/workers/{id}", workerHandler.DeleteWorker)
-		// })
+		r.Group(func(r chi.Router) {
+		    r.Use(auth.Authenticate(secretLookup))
+		    r.Use(auth.RequireScope("workers:read"))
+		    r.Get("/workers", workerHandler.ListWorkers)
+		    r.Post("/workers", workerHandler.CreateWorker)
+		    r.Get("/workers/{id}", workerHandler.GetWorker)
+		    r.Patch("/workers/{id}", workerHandler.UpdateWorker)
+		    r.Delete("/workers/{id}", workerHandler.DeleteWorker)
+		})
 
 		// Worker login (commented out)
 		// r.Post("/auth/worker/login", workerHandler.LoginWorker)
