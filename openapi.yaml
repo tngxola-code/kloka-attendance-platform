@@ -1,0 +1,6247 @@
+openapi: 3.0.3
+info:
+  title: Kloka Attendance Platform API
+  version: 1.0.0
+  description: Full API surface (88 paths, 109 operations) for the Kloka zero-trust workforce attendance platform.
+    Generated from the locked API_DESIGN.md. Schemas are typed where the domain is built (clocking, auth)
+    and generic objects where the domain is still designed; tighten per-domain as code lands.
+  contact:
+    name: Kloka Engineering
+    email: engineering@kloka.co.za
+servers:
+- url: https://api.kloka.co.za/api/v1
+  description: Production
+- url: http://localhost:8080/api/v1
+  description: Local
+tags:
+- name: System
+  description: Infrastructure health, metrics, and specification discovery.
+- name: Auth
+  description: Identity verification, session management, cryptographic device binding, and native app migration.
+- name: Tenants
+  description: Multi-tenant provisioning and tenant-level metadata.
+- name: Sites
+  description: Physical location management and geofence definitions.
+- name: Workers
+  description: Core lifecycle, profile, and onboarding of workforce members.
+- name: Worker Devices
+  description: Hardware devices bound to a worker (decoupled from the worker profile).
+- name: Worker Schedule
+  description: Retrieving a specific worker's upcoming shift assignments.
+- name: Shifts
+  description: Creation and management of shift templates.
+- name: Shift Patterns
+  description: Recurring scheduling logic.
+- name: Assignments
+  description: Mapping a specific worker to a specific site and shift.
+- name: Clocking
+  description: The real-time Zero Trust presence engine. Accepts raw evidence and streams live data.
+- name: Attendance
+  description: Aggregated, read-only views of daily attendance records.
+- name: Adjustments
+  description: Manual, supervisor-approved corrections to attendance records.
+- name: Exceptions
+  description: System-flagged anomalies and their resolution workflows.
+- name: Disputes
+  description: Worker-initiated disputes against system exceptions or attendance records.
+- name: Leave
+  description: Statutory leave management (BCEA Chapter 3 compliance).
+- name: Risk
+  description: Catalogue of risk flags, triggered anomaly events, and custom rule creation.
+- name: Trust
+  description: Granular breakdown of how a specific clocking event's trust score was calculated.
+- name: Payroll Reports
+  description: Asynchronous generation and downloading of payroll exports.
+- name: Payroll Configuration
+  description: Definition of custom payroll fields and mappings to external providers.
+- name: Integrations
+  description: Third-party system connections and scoped API key management.
+- name: Webhooks
+  description: Event-driven outbound notifications, subscriptions, and delivery retries.
+- name: Audit
+  description: Immutable, append-only trail of administrative actions.
+- name: Dashboard
+  description: High-level, real-time operational statistics.
+- name: Analytics
+  description: Deep-dive, filterable historical data for reporting.
+- name: Platform Configuration
+  description: Global or tenant-level defaults for geofencing and QR rotation.
+- name: PWA
+  description: Client-specific optimizations, offline sync, and localized edge queries.
+- name: Notifications
+  description: User-facing alerts, push token registration, and POPIA-compliant preferences.
+- name: Compliance & DSR
+  description: Formal POPIA/PAIA data subject requests and biometric consent management.
+paths:
+  /health/live:
+    get:
+      operationId: GetHealthLive
+      summary: Liveness probe
+      tags:
+      - System
+      security: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters: []
+  /health/ready:
+    get:
+      operationId: GetHealthReady
+      summary: Readiness probe (DB check)
+      tags:
+      - System
+      security: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters: []
+  /metrics:
+    get:
+      operationId: GetMetrics
+      summary: Prometheus metrics
+      tags:
+      - System
+      security: []
+      responses:
+        '200':
+          description: Prometheus exposition format
+          content:
+            text/plain:
+              schema:
+                type: string
+      parameters: []
+  /version:
+    get:
+      operationId: GetVersion
+      summary: Version and build info
+      tags:
+      - System
+      security: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters: []
+  /openapi.json:
+    get:
+      operationId: GetOpenAPIJson
+      summary: Live OpenAPI spec
+      tags:
+      - System
+      security: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters: []
+  /auth/mfa/verify:
+    post:
+      operationId: PostAuthMFAVerify
+      summary: 'Step 2: OTP + session token, returns JWT pair'
+      tags:
+      - Auth
+      security:
+      - sessionToken: []
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MFAVerifyRequest'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /auth/refresh:
+    post:
+      operationId: PostAuthRefresh
+      summary: Rotate access token
+      tags:
+      - Auth
+      security:
+      - refreshCookie: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+  /auth/logout:
+    post:
+      operationId: PostAuthLogout
+      summary: Revoke current session
+      tags:
+      - Auth
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /auth/forgot-password:
+    post:
+      operationId: PostAuthForgotPassword
+      summary: Trigger password reset
+      tags:
+      - Auth
+      security: []
+      responses:
+        '202':
+          description: Accepted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /auth/reset-password:
+    post:
+      operationId: PostAuthResetPassword
+      summary: Execute password reset
+      tags:
+      - Auth
+      security: []
+      responses:
+        '200':
+          description: Success
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /auth/device-bind:
+    post:
+      operationId: PostAuthDeviceBind
+      summary: Bind new device
+      tags:
+      - Auth
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceBindRequest'
+  /auth/webauthn/register/begin:
+    post:
+      operationId: PostAuthWebauthnRegisterBegin
+      summary: Begin WebAuthn registration
+      tags:
+      - Auth
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebAuthnChallenge'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /auth/webauthn/register/finish:
+    post:
+      operationId: PostAuthWebauthnRegisterFinish
+      summary: Finish WebAuthn registration
+      tags:
+      - Auth
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserIdentity'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebAuthnRegisterFinishRequest'
+  /auth/webauthn/login/begin:
+    post:
+      operationId: PostAuthWebauthnLoginBegin
+      summary: Begin WebAuthn login
+      tags:
+      - Auth
+      security: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebAuthnChallenge'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebAuthnLoginBeginRequest'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /auth/webauthn/login/finish:
+    post:
+      operationId: PostAuthWebauthnLoginFinish
+      summary: Finish WebAuthn login
+      tags:
+      - Auth
+      security: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebAuthnLoginFinishRequest'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /auth/me:
+    get:
+      operationId: GetAuthMe
+      summary: Current user profile
+      tags:
+      - Auth
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+  /tenants:
+    post:
+      operationId: PostTenants
+      summary: Create a tenant and issue its one-time tenant key
+      description: Platform-internal. Provisions a tenant, generates its server-side JWT signing secret
+        (never returned), and returns a one-time tenant API key used to scope worker/admin login via the
+        X-Tenant-Key header.
+      tags:
+      - Tenants
+      security:
+      - platformKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTenantRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateTenantResponse'
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: URI of the created resource.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+    get:
+      operationId: GetTenants
+      summary: List accessible tenants
+      tags:
+      - Tenants
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TenantResponse'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /tenants/{id}:
+    get:
+      operationId: GetTenantsByID
+      summary: Get tenant details
+      tags:
+      - Tenants
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /sites:
+    get:
+      operationId: GetSites
+      summary: List sites
+      tags:
+      - Sites
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Site'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+    post:
+      operationId: PostSites
+      summary: Create site with geofence
+      tags:
+      - Sites
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Site'
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: URI of the created resource.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSiteRequest'
+  /sites/{id}:
+    get:
+      operationId: GetSitesByID
+      summary: Get site details
+      tags:
+      - Sites
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Site'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: PatchSitesByID
+      summary: Update site
+      tags:
+      - Sites
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Site'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSiteRequest'
+    delete:
+      operationId: DeleteSitesByID
+      summary: Archive site
+      tags:
+      - Sites
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /workers:
+    get:
+      operationId: GetWorkers
+      summary: Search and list workers
+      tags:
+      - Workers
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Worker'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+    post:
+      operationId: PostWorkers
+      summary: Create worker
+      tags:
+      - Workers
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Worker'
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: URI of the created resource.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkerRequest'
+  /workers/bulk:
+    post:
+      operationId: PostWorkersBulk
+      summary: Bulk CSV import (async)
+      tags:
+      - Workers
+      security:
+      - bearerAuth: []
+      responses:
+        '202':
+          description: Accepted (async job enqueued)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BulkWorkerImportRequest'
+  /workers/{id}:
+    get:
+      operationId: GetWorkersByID
+      summary: Get worker profile
+      tags:
+      - Workers
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Worker'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: PatchWorkersByID
+      summary: Update worker
+      tags:
+      - Workers
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Worker'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWorkerRequest'
+  /workers/{id}/offboard:
+    post:
+      operationId: PostWorkersByIDOffboard
+      summary: Offboard worker
+      tags:
+      - Workers
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Worker'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OffboardWorkerRequest'
+  /workers/{id}/enroll-face:
+    post:
+      operationId: PostWorkersByIDEnrollFace
+      summary: Trigger face enrollment
+      tags:
+      - Workers
+      security:
+      - bearerAuth: []
+      responses:
+        '202':
+          description: Accepted (async job enqueued)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollFaceRequest'
+  /workers/{id}/enroll-webauthn:
+    post:
+      operationId: PostWorkersByIDEnrollWebauthn
+      summary: Register WebAuthn credential
+      tags:
+      - Workers
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebAuthnRegisterFinishRequest'
+  /workers/{id}/devices:
+    get:
+      operationId: GetWorkersByIDDevices
+      summary: List bound devices
+      tags:
+      - Worker Devices
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Device'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+    post:
+      operationId: PostWorkersByIDDevices
+      summary: Approve/revoke device
+      tags:
+      - Worker Devices
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceActionRequest'
+  /workers/{id}/schedule:
+    get:
+      operationId: GetWorkersByIDSchedule
+      summary: Get worker schedule
+      tags:
+      - Worker Schedule
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Assignment'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /workers/{id}/attendance:
+    get:
+      operationId: GetWorkersByIDAttendance
+      summary: Worker attendance history
+      tags:
+      - Attendance
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AttendanceRecord'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /shifts:
+    get:
+      operationId: GetShifts
+      summary: List shift templates
+      tags:
+      - Shifts
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Shift'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+    post:
+      operationId: PostShifts
+      summary: Create shift template
+      tags:
+      - Shifts
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shift'
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: URI of the created resource.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShiftRequest'
+  /shifts/{id}:
+    get:
+      operationId: GetShiftsByID
+      summary: Get shift details
+      tags:
+      - Shifts
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shift'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: PatchShiftsByID
+      summary: Update shift template
+      tags:
+      - Shifts
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shift'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateShiftRequest'
+  /shifts/patterns:
+    get:
+      operationId: GetShiftsPatterns
+      summary: List recurring patterns
+      tags:
+      - Shift Patterns
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ShiftPattern'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+    post:
+      operationId: PostShiftsPatterns
+      summary: Create recurring pattern
+      tags:
+      - Shift Patterns
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftPattern'
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: URI of the created resource.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShiftPatternRequest'
+  /assignments:
+    post:
+      operationId: PostAssignments
+      summary: Assign worker to site+shift
+      tags:
+      - Assignments
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assignment'
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: URI of the created resource.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAssignmentRequest'
+    get:
+      operationId: GetAssignments
+      summary: List assignments
+      tags:
+      - Assignments
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Assignment'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /assignments/{id}:
+    delete:
+      operationId: DeleteAssignmentsByID
+      summary: Remove assignment
+      tags:
+      - Assignments
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /clocking/events:
+    post:
+      operationId: PostClockingEvents
+      summary: Main clock in/out/break
+      tags:
+      - Clocking
+      security:
+      - bearerAuth: []
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '201':
+          description: Event recorded with trust score
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClockingEventResponse'
+        '422':
+          description: Categorical rejection (forged QR / unbound device at QR-required site)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClockingEventRequest'
+      description: 'Proves PRESENCE, not identity (the worker is already authenticated). GPS, QR, facial
+        biometric and geofence are EVIDENCE attached to this event and scored by the trust engine — NOT
+        pass/fail gates. Per ADR 0005: outside-geofence is recorded, flagged and scored lower (not rejected);
+        QR freshness is a score input. Only categorical failures hard-reject: forged QR signature, or
+        unbound device at a QR-required site. Server created_at is authoritative; device timestamp is
+        evidence only.'
+    get:
+      operationId: GetClockingEvents
+      summary: List clock events
+      tags:
+      - Clocking
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClockingEventResponse'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /clocking/events/{id}:
+    get:
+      operationId: GetClockingEventsByID
+      summary: Get full event evidence
+      tags:
+      - Clocking
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClockingEventResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /clocking/live:
+    get:
+      operationId: GetClockingLive
+      summary: Live attendance board (SSE)
+      tags:
+      - Clocking
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Server-Sent Events stream of live attendance
+          content:
+            text/event-stream:
+              schema:
+                type: string
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      description: SSE stream. Each event is a JSON-encoded attendance update.
+  /clocking/qr/validate:
+    post:
+      operationId: PostClockingQRValidate
+      summary: Validate QR code
+      tags:
+      - Clocking
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QrChallenge'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QrValidateRequest'
+  /attendance:
+    get:
+      operationId: GetAttendance
+      summary: Aggregated attendance
+      tags:
+      - Attendance
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AttendanceRecord'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /attendance/daily:
+    get:
+      operationId: GetAttendanceDaily
+      summary: Daily summary per site
+      tags:
+      - Attendance
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AttendanceDailySummary'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /attendance/adjustments:
+    post:
+      operationId: PostAttendanceAdjustments
+      summary: Manual adjustment
+      tags:
+      - Adjustments
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Adjustment'
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: URI of the created resource.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAdjustmentRequest'
+    get:
+      operationId: GetAttendanceAdjustments
+      summary: List adjustments
+      tags:
+      - Adjustments
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Adjustment'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /attendance/exceptions:
+    get:
+      operationId: GetAttendanceExceptions
+      summary: List exceptions
+      tags:
+      - Exceptions
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Exception'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /attendance/exceptions/{id}/resolve:
+    post:
+      operationId: PostAttendanceExceptionsByIDResolve
+      summary: Resolve exception
+      tags:
+      - Exceptions
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exception'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveExceptionRequest'
+  /risk/flags:
+    get:
+      operationId: GetRiskFlags
+      summary: Risk flags catalogue
+      tags:
+      - Risk
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RiskFlag'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /risk/events:
+    get:
+      operationId: GetRiskEvents
+      summary: Risk and anomaly events
+      tags:
+      - Risk
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RiskEvent'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /risk/rules:
+    post:
+      operationId: PostRiskRules
+      summary: Create custom risk rule
+      tags:
+      - Risk
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskFlag'
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: URI of the created resource.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRiskRuleRequest'
+  /trust/score/{event_id}:
+    get:
+      operationId: GetTrustScoreByEventId
+      summary: Trust score breakdown
+      tags:
+      - Trust
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustScore'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /reports/payroll:
+    post:
+      operationId: PostReportsPayroll
+      summary: Generate payroll report (async)
+      tags:
+      - Payroll Reports
+      security:
+      - bearerAuth: []
+      responses:
+        '202':
+          description: Accepted (async job enqueued)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayrollReportRequest'
+    get:
+      operationId: GetReportsPayroll
+      summary: List payroll reports
+      tags:
+      - Payroll Reports
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Job'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /reports/payroll/{id}:
+    get:
+      operationId: GetReportsPayrollByID
+      summary: Get report status
+      tags:
+      - Payroll Reports
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /reports/payroll/{id}/download:
+    get:
+      operationId: GetReportsPayrollByIDDownload
+      summary: Download report
+      tags:
+      - Payroll Reports
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Report file in the requested format.
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /payroll/fields:
+    get:
+      operationId: GetPayrollFields
+      summary: List custom payroll fields
+      tags:
+      - Payroll Configuration
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PayrollField'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+    post:
+      operationId: PostPayrollFields
+      summary: Create custom field
+      tags:
+      - Payroll Configuration
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayrollField'
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: URI of the created resource.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePayrollFieldRequest'
+  /payroll/mappings:
+    get:
+      operationId: GetPayrollMappings
+      summary: Get field mappings
+      tags:
+      - Payroll Configuration
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayrollMappings'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+    patch:
+      operationId: PatchPayrollMappings
+      summary: Update field mappings
+      tags:
+      - Payroll Configuration
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayrollMappings'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayrollMappings'
+  /integrations:
+    get:
+      operationId: GetIntegrations
+      summary: List integrations
+      tags:
+      - Integrations
+      security:
+      - bearerAuth: []
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Integration'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /integrations/api-keys:
+    post:
+      operationId: PostIntegrationsAPIKeys
+      summary: Generate API key
+      tags:
+      - Integrations
+      security:
+      - bearerAuth: []
+      - apiKeyAuth: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyResponse'
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: URI of the created resource.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyRequest'
+    get:
+      operationId: GetIntegrationsAPIKeys
+      summary: List API keys
+      tags:
+      - Integrations
+      security:
+      - bearerAuth: []
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApiKeyMasked'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /integrations/api-keys/{id}:
+    delete:
+      operationId: DeleteIntegrationsAPIKeysByID
+      summary: Revoke API key
+      tags:
+      - Integrations
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /webhooks/subscriptions:
+    post:
+      operationId: PostWebhooksSubscriptions
+      summary: Create webhook subscription
+      tags:
+      - Webhooks
+      security:
+      - bearerAuth: []
+      - apiKeyAuth: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSubscription'
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: URI of the created resource.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWebhookRequest'
+    get:
+      operationId: GetWebhooksSubscriptions
+      summary: List subscriptions
+      tags:
+      - Webhooks
+      security:
+      - bearerAuth: []
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WebhookSubscription'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /webhooks/events:
+    get:
+      operationId: GetWebhooksEvents
+      summary: Delivery history
+      tags:
+      - Webhooks
+      security:
+      - bearerAuth: []
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WebhookDelivery'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /webhooks/events/{id}/replay:
+    post:
+      operationId: PostWebhooksEventsByIDReplay
+      summary: Replay failed delivery
+      tags:
+      - Webhooks
+      security:
+      - bearerAuth: []
+      responses:
+        '202':
+          description: Accepted (async job enqueued)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDelivery'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /audit/log:
+    get:
+      operationId: GetAuditLog
+      summary: Immutable audit trail
+      tags:
+      - Audit
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditEntry'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /dashboard/stats:
+    get:
+      operationId: GetDashboardStats
+      summary: Dashboard statistics
+      tags:
+      - Dashboard
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+  /analytics/attendance:
+    get:
+      operationId: GetAnalyticsAttendance
+      summary: Advanced analytics
+      tags:
+      - Analytics
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AttendanceDailySummary'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /config/geofences:
+    get:
+      operationId: GetConfigGeofences
+      summary: Geofence configurations
+      tags:
+      - Platform Configuration
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeofenceConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+  /config/qr:
+    post:
+      operationId: PostConfigQR
+      summary: QR challenge settings
+      tags:
+      - Platform Configuration
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeofenceConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QrConfigRequest'
+  /pwa/sites/nearby:
+    get:
+      operationId: GetPWASitesNearby
+      summary: Nearby sites (KNN)
+      tags:
+      - PWA
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NearbySite'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /pwa/qr/challenge:
+    get:
+      operationId: GetPWAQRChallenge
+      summary: Current dynamic QR
+      tags:
+      - PWA
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QrChallenge'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+  /pwa/clock:
+    post:
+      operationId: PostPWAClock
+      summary: Simplified clocking
+      tags:
+      - PWA
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClockingEventResponse'
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: URI of the created resource.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PwaClockRequest'
+  /pwa/sync/batch:
+    post:
+      operationId: PostPWASyncBatch
+      summary: Bulk offline replay
+      tags:
+      - PWA
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PwaSyncBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PwaSyncBatchRequest'
+  /pwa/me/attendance:
+    get:
+      operationId: GetPWAMeAttendance
+      summary: Personal attendance
+      tags:
+      - PWA
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - next_cursor
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AttendanceRecord'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  limit:
+                    type: integer
+                    example: 50
+                  has_more:
+                    type: boolean
+                    description: True if more pages exist (next_cursor != null).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /auth/worker/login:
+    post:
+      operationId: PostAuthWorkerLogin
+      summary: Worker login (phone + PIN) scoped by tenant key — returns user JWT
+      description: Proves IDENTITY only (no QR/face/geofence — those belong to clocking). Requires the
+        X-Tenant-Key header to scope the tenant. On success returns a user JWT pair; the access token
+        is used as Bearer on all subsequent endpoints. The JWT is signed with the tenant's server-side
+        secret and carries tenant_id + role as claims.
+      tags:
+      - Auth
+      security:
+      - tenantKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkerLoginRequest'
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Invalid credentials or tenant key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '423':
+          description: Account locked (rate limit / too many attempts)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /auth/admin/login:
+    post:
+      operationId: PostAuthAdminLogin
+      summary: Admin login step 1 (email + password) scoped by tenant key — returns MFA challenge
+      tags:
+      - Auth
+      security:
+      - tenantKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminLoginRequest'
+      responses:
+        '200':
+          description: MFA challenge issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MFAChallenge'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Invalid credentials or tenant key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /auth/worker/request-pin-reset:
+    post:
+      operationId: PostAuthWorkerRequestPinReset
+      summary: Request worker PIN reset (sends SMS OTP)
+      description: Triggers an SMS OTP to the worker's registered E.164 phone for PIN recovery. Always
+        returns 202 to avoid leaking which numbers are enrolled.
+      tags:
+      - Auth
+      security:
+      - tenantKey: []
+      responses:
+        '202':
+          description: OTP dispatched if the number is enrolled
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkerPinResetRequest'
+  /auth/worker/confirm-pin-reset:
+    post:
+      operationId: PostAuthWorkerConfirmPinReset
+      summary: Confirm worker PIN reset with OTP
+      description: Verifies the SMS OTP and sets the new PIN. PIN is hashed with bcrypt over hex(pin_salt)
+        + user_salt + pin server-side.
+      tags:
+      - Auth
+      security:
+      - tenantKey: []
+      responses:
+        '204':
+          description: PIN reset
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkerPinResetConfirmRequest'
+  /auth/device/integrity:
+    post:
+      operationId: PostAuthDeviceIntegrity
+      summary: Validate device integrity attestation
+      description: Validates a platform attestation token (Play Integrity, Huawei Safety Detect, or Apple
+        DeviceCheck). The verdict is a TRUST INPUT to clocking scores, not a hard gate.
+      tags:
+      - Auth
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Attestation verdict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceIntegrityResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceIntegrityRequest'
+  /auth/bootstrap:
+    get:
+      operationId: GetAuthBootstrap
+      summary: Bootstrap full user state for native onboarding/migration
+      description: Returns the complete authenticated user state (identity, tenant, sites, bound devices,
+        active assignments, notification preferences) in a single call for instant native app onboarding
+        or PWA-to-native migration.
+      tags:
+      - Auth
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BootstrapResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+  /auth/devices/revoke-others:
+    post:
+      operationId: PostAuthDevicesRevokeOthers
+      summary: Revoke all bound devices except the current one
+      description: Secure-migration helper. Revokes every device bound to the caller except the device
+        making the request (identified by its bound key / current session).
+      tags:
+      - Auth
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Revocation summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeOthersResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /workers/{id}/devices/{device_id}:
+    delete:
+      operationId: DeleteWorkerDevice
+      summary: Revoke a specific worker device (lost/stolen)
+      description: Explicit revocation of a single device bound to a worker. Decoupled from the worker
+        profile lifecycle.
+      tags:
+      - Worker Devices
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Device revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: device_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /attendance/disputes:
+    get:
+      operationId: GetAttendanceDisputes
+      summary: List worker disputes
+      tags:
+      - Disputes
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Dispute'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - open
+          - upheld
+          - rejected
+      - name: worker_id
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: PostAttendanceDispute
+      summary: Raise a worker dispute against an exception or attendance record
+      tags:
+      - Disputes
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Dispute created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dispute'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDisputeRequest'
+  /attendance/disputes/{id}/resolve:
+    patch:
+      operationId: PatchAttendanceDisputeResolve
+      summary: Resolve (uphold/reject) a worker dispute
+      tags:
+      - Disputes
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Dispute resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dispute'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveDisputeRequest'
+  /leaves/types:
+    get:
+      operationId: GetLeaveTypes
+      summary: List statutory leave types (BCEA Chapter 3)
+      tags:
+      - Leave
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaveType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+  /leaves/balances:
+    get:
+      operationId: GetLeaveBalances
+      summary: Get leave balances for a worker
+      tags:
+      - Leave
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaveBalance'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - name: worker_id
+        in: query
+        required: false
+        description: Defaults to the authenticated worker when omitted.
+        schema:
+          type: string
+          format: uuid
+  /leaves/requests:
+    get:
+      operationId: GetLeaveRequests
+      summary: List leave requests
+      tags:
+      - Leave
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaveRequest'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - pending
+          - approved
+          - rejected
+          - cancelled
+      - name: worker_id
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: PostLeaveRequest
+      summary: Submit a leave request
+      tags:
+      - Leave
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Leave request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLeaveRequest'
+  /leaves/requests/{id}/status:
+    patch:
+      operationId: PatchLeaveRequestStatus
+      summary: Approve, reject, or cancel a leave request
+      tags:
+      - Leave
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLeaveStatusRequest'
+  /me/notifications/preferences:
+    get:
+      operationId: GetMyNotificationPreferences
+      summary: Get notification preferences (POPIA-compliant)
+      tags:
+      - Notifications
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+    patch:
+      operationId: PatchMyNotificationPreferences
+      summary: Update notification preferences
+      tags:
+      - Notifications
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferences'
+  /me/devices/{device_id}/push-token:
+    post:
+      operationId: PostMyDevicePushToken
+      summary: Register a push token (FCM/APNs/Huawei/Web Push)
+      tags:
+      - Notifications
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Token bound
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - name: device_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushTokenRequest'
+  /notifications:
+    get:
+      operationId: GetNotifications
+      summary: List user-facing notifications
+      tags:
+      - Notifications
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      - name: unread
+        in: query
+        required: false
+        schema:
+          type: boolean
+  /notifications/{id}/read:
+    patch:
+      operationId: PatchNotificationRead
+      summary: Mark a notification as read
+      tags:
+      - Notifications
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Marked read
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /compliance/data-export:
+    post:
+      operationId: PostComplianceDataExport
+      summary: Trigger a POPIA/PAIA data subject export
+      description: Queues a full data subject export (POPIA/PAIA). Returns an async Job; the export is
+        delivered via the report download flow when ready.
+      tags:
+      - Compliance & DSR
+      security:
+      - bearerAuth: []
+      responses:
+        '202':
+          description: Export queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataExportRequest'
+  /compliance/consent-revocation:
+    post:
+      operationId: PostComplianceConsentRevocation
+      summary: Revoke biometric consent (disables NFR)
+      description: Revokes a worker's biometric processing consent under POPIA. Disables native face
+        recognition (NFR) for that worker; subsequent clocking falls back to non-biometric evidence.
+      tags:
+      - Compliance & DSR
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Consent revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentRevocationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - $ref: '#/components/parameters/TenantHeader'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentRevocationRequest'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    sessionToken:
+      type: apiKey
+      in: header
+      name: X-Session-Token
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: refresh_token
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    tenantKey:
+      type: apiKey
+      in: header
+      name: X-Tenant-Key
+      description: Per-tenant API key, returned ONCE when the tenant is created. Scopes the login call
+        to a tenant. This is NOT the JWT signing secret — that never leaves the server. This key only
+        identifies + authorises the tenant context.
+    platformKey:
+      type: apiKey
+      in: header
+      name: X-Platform-Key
+      description: Kloka-internal platform credential. Required to create tenants.
+  parameters:
+    TenantHeader:
+      name: X-Tenant-ID
+      in: header
+      required: false
+      description: DEPRECATED transitional header. Tenant identity will come from the JWT tenant_id claim
+        once auth middleware lands; this header is the interim placeholder and must not be relied upon
+        in production.
+      schema:
+        type: string
+        format: uuid
+      deprecated: true
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: UUIDv4. Makes mutating requests safe to retry / offline-replay. Accepted on all mutating
+        operations for a uniform client contract; on naturally-idempotent operations (DELETE, login) the
+        key is accepted but inert.
+      schema:
+        type: string
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Opaque base64 cursor from a previous response.
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 50
+        maximum: 200
+  responses:
+    BadRequest:
+      description: RFC 7807 problem
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: RFC 7807 problem
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    RateLimited:
+      description: Too many requests
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: Conflict (unique constraint or idempotency-key reuse with different payload)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unprocessable:
+      description: Business-rule violation
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnsupportedMediaType:
+      description: Content-Type not supported (expected application/json)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    E164Phone:
+      type: string
+      pattern: ^\+27[6-8]\d{8}$
+      minLength: 12
+      maxLength: 12
+      example: '+27821234567'
+      description: South African mobile number in E.164 format. Always +27 followed by a mobile prefix
+        (6, 7, or 8) and 8 further digits — 12 characters total. Local 0-prefixed numbers (e.g. 0821234567)
+        must be normalised to +27 before submission.
+    Pin:
+      type: string
+      pattern: ^\d{4,8}$
+      writeOnly: true
+      example: '1234'
+      description: 4-8 digit numeric PIN. Security derives from device binding and rate limiting, not
+        PIN entropy. Write-only; never returned.
+    OneTimeCode:
+      type: string
+      pattern: ^\d{6}$
+      example: '123456'
+      description: Six-digit one-time code.
+    DeviceId:
+      type: string
+      format: uuid
+      description: Identifier of a registered device.
+    OpaqueToken:
+      type: string
+      minLength: 16
+      maxLength: 4096
+      description: Opaque server-issued token. Treated as bearer material; never logged.
+    Problem:
+      type: object
+      required:
+      - type
+      - title
+      - status
+      properties:
+        type:
+          type: string
+          format: uri
+          example: https://api.kloka.co.za/errors/validation
+        title:
+          type: string
+          example: Validation failed
+        status:
+          type: integer
+          example: 400
+        detail:
+          type: string
+          example: phone must be a valid South African mobile number (+27[6-8]xxxxxxxx)
+        instance:
+          type: string
+          example: /api/v1/auth/worker/login
+        request_id:
+          type: string
+          example: req_01HXYZ...
+        errors:
+          type: array
+          description: Per-field validation errors (present on 400 validation failures).
+          items:
+            type: object
+            required:
+            - field
+            - message
+            properties:
+              field:
+                type: string
+                example: pin
+              message:
+                type: string
+                example: must be 4-8 digits
+    ClockingEventRequest:
+      type: object
+      required:
+      - worker_id
+      - site_id
+      - event_type
+      - lat
+      - lon
+      description: All presence-evidence fields are TRUST INPUTS, scored by the trust engine — not gates.
+      properties:
+        worker_id:
+          type: string
+          format: uuid
+        site_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+          enum:
+          - clock_in
+          - clock_out
+          - break_start
+          - break_end
+        lat:
+          type: number
+          format: double
+          description: GPS latitude. Geofence checked via PostGIS; outside → flagged + lower score, NOT
+            rejected.
+        lon:
+          type: number
+          format: double
+        accuracy:
+          type: number
+          format: double
+          description: GPS accuracy in metres; very low accuracy lowers trust.
+        qr_payload:
+          type: string
+          maxLength: 2048
+          description: Signed single-use QR (KLOKA|base64|HMAC). Freshness is a score input; a forged
+            signature hard-rejects.
+        device_id:
+          $ref: '#/components/schemas/DeviceId'
+        evidence:
+          $ref: '#/components/schemas/ClockingEvidence'
+      additionalProperties: false
+    ClockingEvidence:
+      type: object
+      additionalProperties: false
+      description: Structured presence evidence. All fields are TRUST INPUTS scored by the trust engine,
+        not gates (except a forged QR signature, which hard-rejects upstream).
+      properties:
+        nfr:
+          type: object
+          additionalProperties: false
+          description: Native face recognition result.
+          properties:
+            photo_url:
+              type: string
+              format: uri
+              description: Stored capture for async face match.
+            match_score:
+              type: number
+              format: double
+              minimum: 0
+              maximum: 1
+              description: Face match confidence; populated async.
+            liveness_passed:
+              type: boolean
+              description: Liveness check verdict.
+        rcid:
+          type: object
+          additionalProperties: false
+          description: Registered client / device identity.
+          properties:
+            registered:
+              type: boolean
+              description: Whether the presenting device is a registered RCID.
+            device_fingerprint:
+              type: string
+              maxLength: 512
+            integrity_verdict:
+              type: string
+              enum:
+              - pass
+              - warn
+              - fail
+        qr:
+          type: object
+          additionalProperties: false
+          description: QR proof-of-presence freshness metadata. The signed payload itself is on the parent
+            request's qr_payload.
+          properties:
+            challenge_id:
+              type: string
+            issued_at:
+              type: string
+              format: date-time
+            age_seconds:
+              type: integer
+        device_fingerprint:
+          type: string
+          maxLength: 512
+          description: Raw device fingerprint at clock time.
+    WorkerLoginRequest:
+      type: object
+      required:
+      - phone
+      - pin
+      additionalProperties: false
+      properties:
+        phone:
+          $ref: '#/components/schemas/E164Phone'
+        pin:
+          $ref: '#/components/schemas/Pin'
+        device_id:
+          $ref: '#/components/schemas/DeviceId'
+    AdminLoginRequest:
+      type: object
+      required:
+      - email
+      - password
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 200
+    TokenPair:
+      type: object
+      required:
+      - access_token
+      - token_type
+      - expires_in
+      properties:
+        access_token:
+          type: string
+          description: User JWT (signed with the tenant secret). Sent as Bearer on all endpoints.
+        token_type:
+          type: string
+          enum:
+          - Bearer
+          example: Bearer
+        expires_in:
+          type: integer
+          example: 900
+          description: Access token lifetime (seconds).
+        user:
+          $ref: '#/components/schemas/UserIdentity'
+      description: User JWT pair. The refresh token is delivered ONLY via an HttpOnly Secure cookie (Set-Cookie),
+        never in this body, to prevent XSS theft.
+    MFAChallenge:
+      type: object
+      required:
+      - mfa_required
+      - session_token
+      - expires_in
+      properties:
+        mfa_required:
+          type: boolean
+          example: true
+        session_token:
+          type: string
+          description: Limited challenge token. Only completes MFA; not a full access token.
+        expires_in:
+          type: integer
+          example: 300
+        methods:
+          type: array
+          items:
+            type: string
+            enum:
+            - totp
+            - sms
+    ClockingEventResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          example: accepted
+        trust_score:
+          type: number
+          format: double
+          example: 0.85
+        trust_flags:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+          description: Authoritative server timestamp.
+    CreateTenantRequest:
+      type: object
+      required:
+      - name
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+          example: Acme Retail Group
+        billing_email:
+          type: string
+          format: email
+          example: ops@acme.co.za
+        country_code:
+          type: string
+          pattern: ^[A-Z]{2}$
+          example: ZA
+          description: ISO 3166-1 alpha-2.
+    CreateTenantResponse:
+      type: object
+      required:
+      - tenant_id
+      - name
+      - tenant_key
+      - created_at
+      properties:
+        tenant_id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+        tenant_key:
+          type: string
+          example: tk_live_8f3a...
+          description: Shown ONCE. Store securely; sent as X-Tenant-Key on login. Cannot be retrieved
+            again — only rotated.
+        created_at:
+          type: string
+          format: date-time
+    TenantResponse:
+      type: object
+      required:
+      - tenant_id
+      - name
+      - created_at
+      properties:
+        tenant_id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+        country_code:
+          type: string
+          example: ZA
+        status:
+          type: string
+          enum:
+          - active
+          - suspended
+          - archived
+        created_at:
+          type: string
+          format: date-time
+    UserIdentity:
+      type: object
+      required:
+      - user_id
+      - tenant_id
+      - role
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+          readOnly: true
+        role:
+          type: string
+          enum:
+          - worker
+          - admin
+          - supervisor
+        display_name:
+          type: string
+    MFAVerifyRequest:
+      type: object
+      required:
+      - session_token
+      - otp
+      additionalProperties: false
+      properties:
+        session_token:
+          $ref: '#/components/schemas/OpaqueToken'
+        otp:
+          $ref: '#/components/schemas/OneTimeCode'
+    PageMeta:
+      type: object
+      required:
+      - next_cursor
+      properties:
+        next_cursor:
+          type: string
+          nullable: true
+          description: Opaque cursor for the next page; null at end.
+          example: eyJpZCI6IjQ1NiJ9
+        limit:
+          type: integer
+          example: 50
+    Site:
+      type: object
+      required:
+      - id
+      - tenant_id
+      - name
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        tenant_id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+          example: Sandton Branch
+        center_lat:
+          type: number
+          format: double
+          example: -26.1076
+        center_lon:
+          type: number
+          format: double
+          example: 28.0567
+        geofence:
+          type: object
+          description: GeoJSON Polygon (WGS84).
+          additionalProperties: true
+        qr_required:
+          type: boolean
+          default: false
+        status:
+          type: string
+          enum:
+          - active
+          - archived
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    CreateSiteRequest:
+      type: object
+      required:
+      - name
+      - center_lat
+      - center_lon
+      - geofence
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+          example: Sandton Branch
+        center_lat:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          example: -26.1076
+        center_lon:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          example: 28.0567
+        geofence:
+          type: object
+          description: GeoJSON Polygon (WGS84).
+          additionalProperties: true
+        qr_required:
+          type: boolean
+          default: false
+    UpdateSiteRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        geofence:
+          type: object
+          additionalProperties: true
+        qr_required:
+          type: boolean
+    Worker:
+      type: object
+      required:
+      - id
+      - tenant_id
+      - employee_number
+      - full_name
+      - status
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        tenant_id:
+          type: string
+          format: uuid
+          readOnly: true
+        employee_number:
+          type: string
+          example: EMP-00123
+        full_name:
+          type: string
+          example: Thabo Nkosi
+        phone:
+          $ref: '#/components/schemas/E164Phone'
+        site_id:
+          type: string
+          format: uuid
+          nullable: true
+        trust_score:
+          type: number
+          format: double
+          readOnly: true
+          minimum: 0
+          maximum: 1
+          example: 0.92
+        status:
+          type: string
+          enum:
+          - active
+          - suspended
+          - offboarded
+          example: active
+        date_of_birth:
+          type: string
+          format: date
+          description: Required for BCEA night-work / young-worker rules.
+          example: '1992-04-17'
+        biometric_consent:
+          type: boolean
+          description: POPIA consent to biometric (NFR) processing. False disables face recognition.
+          example: true
+        consent_timestamp:
+          type: string
+          format: date-time
+          nullable: true
+          description: When biometric consent was captured (POPIA audit).
+          example: '2026-06-06T08:00:00Z'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    CreateWorkerRequest:
+      type: object
+      required:
+      - employee_number
+      - full_name
+      - phone
+      - date_of_birth
+      - biometric_consent
+      - consent_timestamp
+      additionalProperties: false
+      properties:
+        employee_number:
+          type: string
+          minLength: 1
+          maxLength: 40
+          example: EMP-00123
+        full_name:
+          type: string
+          minLength: 2
+          maxLength: 160
+          example: Thabo Nkosi
+        phone:
+          $ref: '#/components/schemas/E164Phone'
+        site_id:
+          type: string
+          format: uuid
+        pin:
+          $ref: '#/components/schemas/Pin'
+        date_of_birth:
+          type: string
+          format: date
+          description: Required for BCEA night-work / young-worker rules.
+          example: '1992-04-17'
+        biometric_consent:
+          type: boolean
+          description: POPIA consent to biometric (NFR) processing.
+          example: true
+        consent_timestamp:
+          type: string
+          format: date-time
+          description: When biometric consent was captured (POPIA audit).
+          example: '2026-06-06T08:00:00Z'
+    UpdateWorkerRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        full_name:
+          type: string
+          minLength: 2
+          maxLength: 160
+        phone:
+          $ref: '#/components/schemas/E164Phone'
+        site_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - active
+          - suspended
+    OffboardWorkerRequest:
+      type: object
+      required:
+      - reason
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+          example: Resignation
+        effective_date:
+          type: string
+          format: date
+          example: '2026-06-30'
+    Device:
+      type: object
+      required:
+      - id
+      - worker_id
+      - status
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        worker_id:
+          type: string
+          format: uuid
+          readOnly: true
+        label:
+          type: string
+          example: Samsung A14
+        trust_level:
+          type: number
+          format: double
+          readOnly: true
+          minimum: 0
+          maximum: 1
+        status:
+          type: string
+          enum:
+          - pending
+          - bound
+          - revoked
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    DeviceActionRequest:
+      type: object
+      required:
+      - device_id
+      - action
+      additionalProperties: false
+      properties:
+        device_id:
+          $ref: '#/components/schemas/DeviceId'
+        action:
+          type: string
+          enum:
+          - approve
+          - revoke
+    Shift:
+      type: object
+      required:
+      - id
+      - tenant_id
+      - name
+      - start_time
+      - end_time
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        tenant_id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          example: Morning
+        start_time:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: 08:00
+        end_time:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: '16:30'
+        break_minutes:
+          type: integer
+          minimum: 0
+          example: 30
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    CreateShiftRequest:
+      type: object
+      required:
+      - name
+      - start_time
+      - end_time
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        start_time:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: 08:00
+        end_time:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: '16:30'
+        break_minutes:
+          type: integer
+          minimum: 0
+          default: 0
+      description: Shift template. If end_time is earlier than start_time the shift is treated as crossing
+        midnight.
+    UpdateShiftRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        start_time:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+        end_time:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+        break_minutes:
+          type: integer
+          minimum: 0
+    ShiftPattern:
+      type: object
+      required:
+      - id
+      - shift_id
+      - days
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        shift_id:
+          type: string
+          format: uuid
+        days:
+          type: array
+          items:
+            type: string
+            enum:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+          example:
+          - mon
+          - tue
+          - wed
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    CreateShiftPatternRequest:
+      type: object
+      required:
+      - shift_id
+      - days
+      additionalProperties: false
+      properties:
+        shift_id:
+          type: string
+          format: uuid
+        days:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+    Assignment:
+      type: object
+      required:
+      - id
+      - worker_id
+      - site_id
+      - shift_id
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        worker_id:
+          type: string
+          format: uuid
+        site_id:
+          type: string
+          format: uuid
+        shift_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    CreateAssignmentRequest:
+      type: object
+      required:
+      - worker_id
+      - site_id
+      - shift_id
+      additionalProperties: false
+      properties:
+        worker_id:
+          type: string
+          format: uuid
+        site_id:
+          type: string
+          format: uuid
+        shift_id:
+          type: string
+          format: uuid
+    AttendanceRecord:
+      type: object
+      required:
+      - worker_id
+      - date
+      properties:
+        worker_id:
+          type: string
+          format: uuid
+        worker_name:
+          type: string
+        date:
+          type: string
+          format: date
+          example: '2026-06-06'
+        clock_in:
+          type: string
+          format: date-time
+          nullable: true
+        clock_out:
+          type: string
+          format: date-time
+          nullable: true
+        worked_minutes:
+          type: integer
+          example: 480
+        is_night_work:
+          type: boolean
+          description: BCEA night-work flag (work between 18:00 and 06:00).
+          example: false
+        break_compliant:
+          type: boolean
+          description: Whether statutory meal/rest breaks were observed.
+          example: true
+        bcea_hours_compliant:
+          type: boolean
+          description: Whether daily hours stayed within BCEA limits.
+          example: true
+        status:
+          type: string
+          enum:
+          - present
+          - late
+          - absent
+          - partial
+          - on_leave
+          - disputed
+    AttendanceDailySummary:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        site_id:
+          type: string
+          format: uuid
+        present:
+          type: integer
+        late:
+          type: integer
+        absent:
+          type: integer
+        total_expected:
+          type: integer
+    CreateAdjustmentRequest:
+      type: object
+      required:
+      - worker_id
+      - date
+      - reason
+      additionalProperties: false
+      properties:
+        worker_id:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        clock_in:
+          type: string
+          format: date-time
+        clock_out:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+          example: Worker forgot to clock in
+        dispute_id:
+          type: string
+          format: uuid
+          description: Optional link to the dispute that prompted this adjustment (audit trail).
+    Adjustment:
+      type: object
+      required:
+      - id
+      - worker_id
+      - created_by
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        worker_id:
+          type: string
+          format: uuid
+        created_by:
+          type: string
+          format: uuid
+          readOnly: true
+        reason:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    Exception:
+      type: object
+      required:
+      - id
+      - worker_id
+      - type
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        worker_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+          - no_show
+          - late
+          - early_departure
+          - geofence
+          - trust
+        status:
+          type: string
+          enum:
+          - open
+          - resolved
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    ResolveExceptionRequest:
+      type: object
+      required:
+      - resolution
+      additionalProperties: false
+      properties:
+        resolution:
+          type: string
+          minLength: 3
+          maxLength: 500
+          example: Verified via CCTV
+    RiskFlag:
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+          - geofence_breach
+          - device_mismatch
+          - liveness_failed
+          - qr_expired
+          - qr_forged
+          - bcea_daily_limit_exceeded
+          - nfr_liveness_failed
+          - rcid_not_registered
+          example: geofence_breach
+        description:
+          type: string
+        default_weight:
+          type: number
+          format: double
+          example: 0.3
+    RiskEvent:
+      type: object
+      required:
+      - id
+      - event_id
+      - flag_code
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        event_id:
+          type: string
+          format: uuid
+        flag_code:
+          type: string
+        score_delta:
+          type: number
+          format: double
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    CreateRiskRuleRequest:
+      type: object
+      required:
+      - name
+      - condition
+      - weight
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          example: Far from site
+        condition:
+          type: string
+          minLength: 1
+          maxLength: 500
+          example: distance_m > 50000
+          description: Rule-engine condition expression. Server-side parsed against an allow-listed grammar.
+        weight:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          example: 0.4
+    TrustScore:
+      type: object
+      required:
+      - event_id
+      - score
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        score:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          example: 0.85
+        signals:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                example: geofence
+              value:
+                type: number
+                format: double
+              weight:
+                type: number
+                format: double
+    PayrollReportRequest:
+      type: object
+      required:
+      - period_start
+      - period_end
+      - format
+      additionalProperties: false
+      properties:
+        period_start:
+          type: string
+          format: date
+          example: '2026-05-01'
+        period_end:
+          type: string
+          format: date
+          example: '2026-05-31'
+        format:
+          type: string
+          enum:
+          - csv
+          - xlsx
+          - pdf
+        site_id:
+          type: string
+          format: uuid
+      description: Generate a payroll export. period_end must be on or after period_start (validated server-side;
+        422 otherwise).
+    Job:
+      type: object
+      required:
+      - job_id
+      - status
+      properties:
+        job_id:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          type: string
+          enum:
+          - pending
+          - processing
+          - complete
+          - failed
+        result_url:
+          type: string
+          nullable: true
+          description: Short-lived signed URL when complete.
+        error:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    PayrollField:
+      type: object
+      required:
+      - id
+      - key
+      - label
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        key:
+          type: string
+          example: overtime_rate
+        label:
+          type: string
+        type:
+          type: string
+          enum:
+          - string
+          - number
+          - boolean
+    CreatePayrollFieldRequest:
+      type: object
+      required:
+      - key
+      - label
+      - type
+      additionalProperties: false
+      properties:
+        key:
+          type: string
+          pattern: ^[a-z_]+$
+          example: overtime_rate
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        type:
+          type: string
+          enum:
+          - string
+          - number
+          - boolean
+    PayrollMappings:
+      type: object
+      properties:
+        mappings:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            kloka_net_hours: xero_hours
+    Integration:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        provider:
+          type: string
+          enum:
+          - xero
+          - sage
+          - custom
+        status:
+          type: string
+          enum:
+          - active
+          - disabled
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    CreateApiKeyRequest:
+      type: object
+      required:
+      - label
+      additionalProperties: false
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+          example: Xero integration
+        scope:
+          type: string
+          enum:
+          - read
+          - read_write
+          default: read
+    ApiKeyResponse:
+      type: object
+      required:
+      - id
+      - label
+      - key
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        label:
+          type: string
+        key:
+          type: string
+          readOnly: true
+          description: Shown ONCE. Store securely.
+          example: sk_live_...
+        scope:
+          type: string
+          enum:
+          - read
+          - read_write
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    ApiKeyMasked:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        label:
+          type: string
+        last4:
+          type: string
+          example: a1b2
+        scope:
+          type: string
+          enum:
+          - read
+          - read_write
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    CreateWebhookRequest:
+      type: object
+      required:
+      - url
+      - events
+      additionalProperties: false
+      properties:
+        url:
+          type: string
+          format: uri
+          example: https://hr.acme.co.za/webhooks/kloka
+        events:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum:
+            - clocking.created
+            - trust.breach
+            - worker.offboarded
+          maxItems: 20
+    WebhookSubscription:
+      type: object
+      required:
+      - id
+      - url
+      - events
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+        secret:
+          type: string
+          readOnly: true
+          description: Signing secret, shown once at creation.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    WebhookDelivery:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        event_type:
+          type: string
+        status:
+          type: string
+          enum:
+          - delivered
+          - failed
+          - pending
+        attempts:
+          type: integer
+        last_response_code:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    AuditEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        actor_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+          example: site.update
+        resource:
+          type: string
+        tenant_id:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    DashboardStats:
+      type: object
+      properties:
+        active_workers:
+          type: integer
+        clocked_in_now:
+          type: integer
+        todays_attendance_rate:
+          type: number
+          format: double
+          example: 0.94
+    QrConfigRequest:
+      type: object
+      required:
+      - ttl_seconds
+      additionalProperties: false
+      properties:
+        ttl_seconds:
+          type: integer
+          minimum: 30
+          maximum: 3600
+          example: 600
+        rotation_seconds:
+          type: integer
+          minimum: 30
+          example: 300
+    GeofenceConfig:
+      type: object
+      properties:
+        default_radius_m:
+          type: integer
+          example: 100
+        strict_mode:
+          type: boolean
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        refresh_token:
+          type: string
+          minLength: 16
+          maxLength: 4096
+          description: Opaque refresh token. Optional for non-browser clients; browsers send the HttpOnly
+            cookie instead.
+    ForgotPasswordRequest:
+      type: object
+      required:
+      - email
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+    ResetPasswordRequest:
+      type: object
+      required:
+      - token
+      - new_password
+      additionalProperties: false
+      properties:
+        token:
+          $ref: '#/components/schemas/OpaqueToken'
+        new_password:
+          type: string
+          minLength: 8
+          maxLength: 200
+          writeOnly: true
+    DeviceBindRequest:
+      type: object
+      required:
+      - device_id
+      - public_key
+      additionalProperties: false
+      properties:
+        device_id:
+          $ref: '#/components/schemas/DeviceId'
+        public_key:
+          type: string
+          minLength: 32
+          maxLength: 1024
+          description: Base64-encoded Ed25519 public key.
+        otp:
+          $ref: '#/components/schemas/OneTimeCode'
+    MeResponse:
+      allOf:
+      - $ref: '#/components/schemas/UserIdentity'
+      - type: object
+        properties:
+          permissions:
+            type: array
+            items:
+              type: string
+          devices:
+            type: array
+            items:
+              $ref: '#/components/schemas/Device'
+    PwaClockRequest:
+      type: object
+      required:
+      - site_id
+      - event_type
+      - lat
+      - lon
+      additionalProperties: false
+      properties:
+        site_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+          enum:
+          - clock_in
+          - clock_out
+          - break_start
+          - break_end
+        lat:
+          type: number
+          format: double
+        lon:
+          type: number
+          format: double
+        qr_payload:
+          type: string
+          maxLength: 2048
+          description: Signed single-use QR payload.
+    PwaSyncBatchRequest:
+      type: object
+      required:
+      - events
+      additionalProperties: false
+      properties:
+        events:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/ClockingEventRequest'
+    PwaSyncBatchResponse:
+      type: object
+      required:
+      - results
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            required:
+            - index
+            - status
+            properties:
+              index:
+                type: integer
+              status:
+                type: string
+                enum:
+                - created
+                - duplicate
+                - rejected
+              event_id:
+                type: string
+                format: uuid
+                nullable: true
+              code:
+                type: string
+                nullable: true
+    NearbySite:
+      type: object
+      properties:
+        site_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        distance_m:
+          type: number
+          format: double
+    QrChallenge:
+      type: object
+      properties:
+        qr_payload:
+          type: string
+          example: KLOKA|...|...
+        expires_at:
+          type: string
+          format: date-time
+    BulkWorkerImportRequest:
+      type: object
+      required:
+      - file
+      description: multipart/form-data CSV upload.
+      properties:
+        file:
+          type: string
+          format: binary
+          description: 'CSV: employee_number,full_name,phone,site_id'
+      additionalProperties: false
+    EnrollFaceRequest:
+      type: object
+      required:
+      - photo_url
+      additionalProperties: false
+      properties:
+        photo_url:
+          type: string
+          format: uri
+          description: Object-store URL of the uploaded enrollment photo. Raw biometric never sent in-band.
+    QrValidateRequest:
+      type: object
+      required:
+      - qr_payload
+      additionalProperties: false
+      properties:
+        qr_payload:
+          type: string
+          maxLength: 2048
+          example: KLOKA|base64|HMAC
+    WebAuthnRegisterFinishRequest:
+      type: object
+      required:
+      - credential
+      additionalProperties: false
+      properties:
+        credential:
+          type: object
+          description: PublicKeyCredential attestation, base64url-encoded per WebAuthn L2.
+          additionalProperties: true
+    WebAuthnLoginBeginRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        phone:
+          $ref: '#/components/schemas/E164Phone'
+    WebAuthnLoginFinishRequest:
+      type: object
+      required:
+      - assertion
+      additionalProperties: false
+      properties:
+        assertion:
+          type: object
+          description: PublicKeyCredential assertion, base64url-encoded.
+          additionalProperties: true
+    WebAuthnChallenge:
+      type: object
+      required:
+      - challenge
+      properties:
+        challenge:
+          type: string
+          description: Base64url challenge / PublicKeyCredentialCreationOptions.
+        rp:
+          type: object
+          additionalProperties: true
+    WorkerPinResetRequest:
+      type: object
+      required:
+      - phone
+      additionalProperties: false
+      properties:
+        phone:
+          $ref: '#/components/schemas/E164Phone'
+    WorkerPinResetConfirmRequest:
+      type: object
+      required:
+      - phone
+      - otp
+      - new_pin
+      additionalProperties: false
+      properties:
+        phone:
+          $ref: '#/components/schemas/E164Phone'
+        otp:
+          $ref: '#/components/schemas/OneTimeCode'
+        new_pin:
+          $ref: '#/components/schemas/Pin'
+    DeviceIntegrityRequest:
+      type: object
+      required:
+      - device_id
+      - platform
+      - attestation_token
+      additionalProperties: false
+      properties:
+        device_id:
+          $ref: '#/components/schemas/DeviceId'
+        platform:
+          type: string
+          enum:
+          - play_integrity
+          - huawei_safety_detect
+          - apple_devicecheck
+        attestation_token:
+          type: string
+          maxLength: 8192
+          description: Opaque platform attestation token. Never logged.
+    DeviceIntegrityResponse:
+      type: object
+      required:
+      - verdict
+      properties:
+        verdict:
+          type: string
+          enum:
+          - pass
+          - warn
+          - fail
+          description: TRUST INPUT to clocking scores, not a hard gate.
+        device_id:
+          $ref: '#/components/schemas/DeviceId'
+        evaluated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        signals:
+          type: object
+          additionalProperties: true
+          description: Raw platform verdict fields (e.g. basicIntegrity, ctsProfileMatch).
+    BootstrapResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/UserIdentity'
+        tenant:
+          $ref: '#/components/schemas/TenantResponse'
+        sites:
+          type: array
+          items:
+            $ref: '#/components/schemas/Site'
+        devices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Device'
+        assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Assignment'
+        notification_preferences:
+          $ref: '#/components/schemas/NotificationPreferences'
+        server_time:
+          type: string
+          format: date-time
+          readOnly: true
+    RevokeOthersResponse:
+      type: object
+      properties:
+        revoked_count:
+          type: integer
+          example: 3
+        kept_device_id:
+          $ref: '#/components/schemas/DeviceId'
+    Dispute:
+      type: object
+      required:
+      - id
+      - worker_id
+      - status
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        worker_id:
+          type: string
+          format: uuid
+        exception_id:
+          type: string
+          format: uuid
+          nullable: true
+        attendance_date:
+          type: string
+          format: date
+          nullable: true
+        reason:
+          type: string
+        status:
+          type: string
+          enum:
+          - open
+          - upheld
+          - rejected
+        resolution:
+          type: string
+          nullable: true
+        resolved_by:
+          type: string
+          format: uuid
+          nullable: true
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    CreateDisputeRequest:
+      type: object
+      required:
+      - reason
+      additionalProperties: false
+      description: Must reference either an exception_id or an attendance_date.
+      properties:
+        exception_id:
+          type: string
+          format: uuid
+        attendance_date:
+          type: string
+          format: date
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 1000
+          example: I was on site but the geofence flagged me as absent.
+    ResolveDisputeRequest:
+      type: object
+      required:
+      - status
+      - resolution
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - upheld
+          - rejected
+        resolution:
+          type: string
+          minLength: 3
+          maxLength: 1000
+          example: Upheld; CCTV confirms presence. Attendance corrected.
+    LeaveType:
+      type: object
+      required:
+      - code
+      - name
+      properties:
+        code:
+          type: string
+          enum:
+          - annual
+          - sick
+          - family_responsibility
+          - maternity
+          - parental
+          - unpaid
+          example: annual
+        name:
+          type: string
+          example: Annual leave
+        statutory_days_per_cycle:
+          type: number
+          format: double
+          nullable: true
+          description: BCEA Chapter 3 entitlement where applicable.
+          example: 21
+        paid:
+          type: boolean
+    LeaveBalance:
+      type: object
+      required:
+      - worker_id
+      - leave_type
+      properties:
+        worker_id:
+          type: string
+          format: uuid
+        leave_type:
+          type: string
+          example: annual
+        accrued_days:
+          type: number
+          format: double
+          example: 18.5
+        taken_days:
+          type: number
+          format: double
+          example: 4
+        available_days:
+          type: number
+          format: double
+          example: 14.5
+        cycle_start:
+          type: string
+          format: date
+          nullable: true
+    LeaveRequest:
+      type: object
+      required:
+      - id
+      - worker_id
+      - leave_type
+      - start_date
+      - end_date
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        worker_id:
+          type: string
+          format: uuid
+        leave_type:
+          type: string
+          example: sick
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        days:
+          type: number
+          format: double
+          readOnly: true
+          example: 2
+        reason:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+          - pending
+          - approved
+          - rejected
+          - cancelled
+        decided_by:
+          type: string
+          format: uuid
+          nullable: true
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    CreateLeaveRequest:
+      type: object
+      required:
+      - leave_type
+      - start_date
+      - end_date
+      additionalProperties: false
+      properties:
+        worker_id:
+          type: string
+          format: uuid
+          description: Admin-only; defaults to the authenticated worker when omitted.
+        leave_type:
+          type: string
+          example: annual
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        reason:
+          type: string
+          maxLength: 500
+    UpdateLeaveStatusRequest:
+      type: object
+      required:
+      - status
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - approved
+          - rejected
+          - cancelled
+        note:
+          type: string
+          maxLength: 500
+    NotificationPreferences:
+      type: object
+      additionalProperties: false
+      description: POPIA-compliant channel opt-ins. All default to false until the worker opts in.
+      properties:
+        push_enabled:
+          type: boolean
+          default: false
+        sms_enabled:
+          type: boolean
+          default: false
+        email_enabled:
+          type: boolean
+          default: false
+        shift_reminders:
+          type: boolean
+          default: false
+        dispute_updates:
+          type: boolean
+          default: false
+        leave_updates:
+          type: boolean
+          default: false
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PushTokenRequest:
+      type: object
+      required:
+      - provider
+      - token
+      additionalProperties: false
+      properties:
+        provider:
+          type: string
+          enum:
+          - fcm
+          - apns
+          - huawei
+          - web_push
+        token:
+          type: string
+          maxLength: 4096
+          description: Provider push token. Treated as sensitive; never logged.
+    Notification:
+      type: object
+      required:
+      - id
+      - type
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        type:
+          type: string
+          example: dispute_resolved
+        title:
+          type: string
+        body:
+          type: string
+        read:
+          type: boolean
+          default: false
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-06-06T08:00:00Z'
+    DataExportRequest:
+      type: object
+      required:
+      - worker_id
+      additionalProperties: false
+      properties:
+        worker_id:
+          type: string
+          format: uuid
+          description: Data subject whose data is exported.
+        format:
+          type: string
+          enum:
+          - json
+          - csv
+          default: json
+        include_biometrics:
+          type: boolean
+          default: false
+          description: Whether to include biometric templates/metadata in the export.
+    ConsentRevocationRequest:
+      type: object
+      required:
+      - worker_id
+      additionalProperties: false
+      properties:
+        worker_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          maxLength: 500
+    ConsentRevocationResponse:
+      type: object
+      properties:
+        worker_id:
+          type: string
+          format: uuid
+        biometric_consent:
+          type: boolean
+          example: false
+        nfr_enabled:
+          type: boolean
+          example: false
+        revoked_at:
+          type: string
+          format: date-time
+          readOnly: true
